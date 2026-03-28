@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Bank Churners Analysis</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #006633;
+      --primary-dark: #004d26;
+      --secondary: #D4A017;
+      --bg: #f0f4f1;
+      --card-bg: #ffffff;
+      --text: #1a2e22;
+      --text-light: #5a7a65;
+      --border: #d0e4d8;
+      --shadow: 0 2px 12px rgba(0,102,51,0.10);
+      --danger: #c0392b;
+      --success: #27ae60;
+      --warning: #f39c12;
+      --info: #2980b9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 28px 40px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(0,102,51,0.25);
+    }
+    .header-left h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .header-left p {
+      font-size: 0.85rem;
+      opacity: 0.82;
+      margin-top: 4px;
+      letter-spacing: 0.3px;
+    }
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .badge {
+      background: var(--secondary);
+      color: #1a1a00;
+      font-weight: 700;
+      font-size: 0.78rem;
+      padding: 5px 14px;
+      border-radius: 20px;
+      letter-spacing: 0.4px;
+    }
+    .date-label {
+      font-size: 0.75rem;
+      opacity: 0.7;
+    }
+
+    /* MAIN CONTENT */
+    main {
+      padding: 28px 36px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* KPI CARDS */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px 18px 16px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--primary);
+      transition: transform 0.15s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-card.danger  { border-left-color: var(--danger); }
+    .kpi-card.warning { border-left-color: var(--warning); }
+    .kpi-card.info    { border-left-color: var(--info); }
+    .kpi-card.success { border-left-color: var(--success); }
+    .kpi-card.gold    { border-left-color: var(--secondary); }
+
+    .kpi-label {
+      font-size: 0.73rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-light);
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+    .kpi-sub {
+      font-size: 0.72rem;
+      color: var(--text-light);
+      margin-top: 5px;
+    }
+
+    /* SECTION TITLES */
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--primary);
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 18px;
+    }
+
+    /* CHARTS GRID */
+    .charts-row {
+      display: grid;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .charts-row-3 { grid-template-columns: repeat(3, 1fr); }
+    .charts-row-2 { grid-template-columns: 2fr 1fr; }
+    .charts-row-2b { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 1000px) {
+      .charts-row-3, .charts-row-2, .charts-row-2b { grid-template-columns: 1fr; }
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 22px 20px 18px;
+      box-shadow: var(--shadow);
+    }
+    .chart-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart-title .icon {
+      width: 28px; height: 28px;
+      background: var(--bg);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem;
+    }
+    .chart-canvas-wrap {
+      position: relative;
+    }
+
+    /* DATA TABLE */
+    .table-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 22px 20px 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    .table-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .table-controls input {
+      padding: 7px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      outline: none;
+      color: var(--text);
+      background: var(--bg);
+      min-width: 180px;
+    }
+    .table-controls input:focus { border-color: var(--primary); }
+
+    .pagination {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+    .pagination button {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 11px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .pagination button:hover { background: var(--primary); color: white; border-color: var(--primary); }
+    .pagination span { color: var(--text-light); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    thead th {
+      background: var(--primary);
+      color: white;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.3px;
+    }
+    thead th:first-child { border-radius: 6px 0 0 0; }
+    thead th:last-child  { border-radius: 0 6px 0 0; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:hover { background: var(--bg); }
+    tbody td { padding: 9px 12px; color: var(--text); }
+
+    .badge-status {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .badge-existing { background: #d4edda; color: #155724; }
+    .badge-attrited { background: #f8d7da; color: #721c24; }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      padding: 18px 20px;
+      font-size: 0.73rem;
+      color: var(--text-light);
+      border-top: 1px solid var(--border);
+      background: var(--card-bg);
+    }
+    footer strong { color: var(--primary); }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>📊 Bank Churners — Dashboard Analytique</h1>
+    <p>ENCG Settat — Université Hassan 1er &nbsp;|&nbsp; Analyse de la rétention client bancaire</p>
+  </div>
+  <div class="header-right">
+    <span class="badge">🏦 Données Commerciales</span>
+    <span class="date-label">Source : BankChurners.csv &nbsp;|&nbsp; 10 127 clients</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Clients</div>
+      <div class="kpi-value">10 127</div>
+      <div class="kpi-sub">Base de données complète</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-label">Clients Churners</div>
+      <div class="kpi-value">1 627</div>
+      <div class="kpi-sub">Clients perdus</div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-label">Taux de Churn</div>
+      <div class="kpi-value">16.1%</div>
+      <div class="kpi-sub">Taux d'attrition global</div>
+    </div>
+    <div class="kpi-card info">
+      <div class="kpi-label">Limite Crédit Moy.</div>
+      <div class="kpi-value">$8 632</div>
+      <div class="kpi-sub">Moyenne tous clients</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-label">Trans. Moy. / Client</div>
+      <div class="kpi-value">$4 404</div>
+      <div class="kpi-sub">Montant moyen annuel</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">Taux Utilisation</div>
+      <div class="kpi-value">27.5%</div>
+      <div class="kpi-sub">Utilisation crédit moy.</div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Attrition + Gender + Card -->
+  <p class="section-title">Vue d'ensemble des clients</p>
+  <div class="charts-row charts-row-3">
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">🔴</div> Statut d'Attrition</div>
+      <div class="chart-canvas-wrap"><canvas id="chartAttrition" height="220"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">👥</div> Répartition par Genre</div>
+      <div class="chart-canvas-wrap"><canvas id="chartGender" height="220"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">💳</div> Type de Carte</div>
+      <div class="chart-canvas-wrap"><canvas id="chartCard" height="220"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Age + Marital -->
+  <div class="charts-row charts-row-2">
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">📊</div> Distribution par Tranche d'Âge</div>
+      <div class="chart-canvas-wrap"><canvas id="chartAge" height="180"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">💍</div> Statut Marital</div>
+      <div class="chart-canvas-wrap"><canvas id="chartMarital" height="180"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Education + Income -->
+  <p class="section-title">Profil socio-économique</p>
+  <div class="charts-row charts-row-2b">
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">🎓</div> Niveau d'Éducation</div>
+      <div class="chart-canvas-wrap"><canvas id="chartEdu" height="200"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">💰</div> Catégorie de Revenu</div>
+      <div class="chart-canvas-wrap"><canvas id="chartIncome" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ROW 4: Credit by card + Churn by edu -->
+  <p class="section-title">Analyse du Churn & Performance financière</p>
+  <div class="charts-row charts-row-2b">
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">⚠️</div> Churners par Niveau d'Éducation</div>
+      <div class="chart-canvas-wrap"><canvas id="chartChurnEdu" height="200"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><div class="icon">🏅</div> Limite Crédit Moy. par Carte</div>
+      <div class="chart-canvas-wrap"><canvas id="chartCreditCard" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- DATA TABLE -->
+  <p class="section-title">Tableau de données — Aperçu clients</p>
+  <div class="table-card">
+    <div class="table-controls">
+      <input type="text" id="searchInput" placeholder="🔍 Rechercher un client..." oninput="filterTable()">
+      <div class="pagination">
+        <button onclick="changePage(-1)">‹ Préc.</button>
+        <span id="pageInfo">Page 1 / —</span>
+        <button onclick="changePage(1)">Suiv. ›</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Client N°</th>
+            <th>Statut</th>
+            <th>Âge</th>
+            <th>Genre</th>
+            <th>Éducation</th>
+            <th>Revenu</th>
+            <th>Carte</th>
+            <th>Limite Crédit</th>
+            <th>Trans. Amt.</th>
+            <th>Util. Crédit</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Dashboard généré par <strong>ENCG Settat — Université Hassan 1er</strong> &nbsp;|&nbsp;
+  Données : BankChurners.csv (10 127 clients) &nbsp;|&nbsp;
+  Visualisation : Chart.js 4.x &nbsp;|&nbsp;
+  <strong>Analyse de la Rétention Client Bancaire</strong>
+</footer>
+
+<script>
+// ========================
+// DATA
+// ========================
+const GREEN = '#006633';
+const GOLD  = '#D4A017';
+const COLORS = ['#006633','#D4A017','#2980b9','#c0392b','#8e44ad','#27ae60','#e67e22'];
+const LIGHT  = ['rgba(0,102,51,0.15)','rgba(212,160,23,0.15)','rgba(41,128,185,0.15)','rgba(192,57,43,0.15)'];
+
+const tableData = [
+  [768805383,"Existing Customer",45,"M","High School","$60K - $80K","Blue",12691,1144,0.325],
+  [818770008,"Existing Customer",49,"F","Graduate","Less than $40K","Blue",8256,1291,0.276],
+  [713982108,"Existing Customer",51,"M","Graduate","$80K - $120K","Blue",3418,1887,0.229],
+  [769911858,"Existing Customer",40,"F","High School","Less than $40K","Blue",3313,1171,0.0],
+  [709106358,"Existing Customer",40,"M","Uneducated","$60K - $80K","Blue",4716,816,0.0],
+  [713061558,"Existing Customer",44,"M","Graduate","$40K - $60K","Blue",4010,1088,0.226],
+  [810347208,"Existing Customer",51,"M","Unknown","$120K +","Gold",34516,1350,0.0],
+  [818906208,"Attrited Customer",32,"M","High School","Less than $40K","Silver",29081,1442,0.529],
+  [710930508,"Existing Customer",37,"M","Uneducated","$60K - $80K","Blue",22352,2517,0.109],
+  [719661558,"Existing Customer",48,"M","Graduate","Less than $40K","Blue",11656,1201,0.219],
+  [708790008,"Attrited Customer",27,"M","College","Less than $40K","Blue",6864,1217,0.296],
+  [719571108,"Existing Customer",43,"F","Uneducated","Less than $40K","Blue",7179,2048,0.154],
+  [712278108,"Existing Customer",34,"F","Post-Graduate","$40K - $60K","Blue",13611,2016,0.0],
+  [814613208,"Existing Customer",44,"M","Graduate","Less than $40K","Blue",5990,1118,0.208],
+  [717562908,"Attrited Customer",40,"M","Graduate","Less than $40K","Blue",5880,1167,0.296],
+  [713445258,"Existing Customer",39,"M","College","$40K - $60K","Blue",7419,972,0.346],
+  [715838808,"Existing Customer",56,"M","Graduate","$60K - $80K","Blue",13001,2016,0.0],
+  [719258358,"Existing Customer",47,"F","High School","Less than $40K","Blue",5876,1014,0.363],
+  [769526958,"Existing Customer",48,"M","Graduate","$40K - $60K","Blue",5016,1068,0.338],
+  [717001158,"Attrited Customer",47,"M","High School","Less than $40K","Blue",2230,1401,0.479],
+  [717006858,"Existing Customer",51,"F","Graduate","$40K - $60K","Blue",2629,1089,0.0],
+  [813473358,"Existing Customer",41,"M","Graduate","Less than $40K","Blue",5176,1076,0.0],
+  [718041558,"Existing Customer",35,"F","High School","Less than $40K","Blue",4400,1038,0.255],
+  [710036208,"Existing Customer",36,"M","College","$40K - $60K","Blue",4972,1083,0.0],
+  [711551358,"Existing Customer",39,"F","Graduate","$40K - $60K","Blue",6552,1023,0.312],
+  [710069508,"Existing Customer",47,"F","Graduate","$40K - $60K","Blue",8256,1036,0.285],
+  [817573158,"Attrited Customer",48,"M","Graduate","$40K - $60K","Blue",5096,1150,0.237],
+  [715659858,"Existing Customer",49,"F","High School","Less than $40K","Blue",1798,1078,0.539],
+  [713003358,"Existing Customer",41,"F","High School","Less than $40K","Blue",4972,1042,0.296],
+  [712074708,"Attrited Customer",44,"M","Graduate","$60K - $80K","Blue",8256,1042,0.382],
+];
+
+// ========================
+// CHARTS
+// ========================
+
+// 1. Attrition donut
+new Chart(document.getElementById('chartAttrition'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Clients Actifs', 'Churners'],
+    datasets: [{
+      data: [8500, 1627],
+      backgroundColor: ['#006633','#c0392b'],
+      borderWidth: 3, borderColor: '#fff'
+    }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } },
+      tooltip: { callbacks: {
+        label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10127*100).toFixed(1)}%)`
+      }}
+    }
+  }
+});
+
+// 2. Gender donut
+new Chart(document.getElementById('chartGender'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Femmes', 'Hommes'],
+    datasets: [{
+      data: [5358, 4769],
+      backgroundColor: ['#D4A017','#2980b9'],
+      borderWidth: 3, borderColor: '#fff'
+    }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } },
+      tooltip: { callbacks: {
+        label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10127*100).toFixed(1)}%)`
+      }}
+    }
+  }
+});
+
+// 3. Card type donut
+new Chart(document.getElementById('chartCard'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Blue', 'Silver', 'Gold', 'Platinum'],
+    datasets: [{
+      data: [9436, 555, 116, 20],
+      backgroundColor: ['#2980b9','#95a5a6','#D4A017','#7f8c8d'],
+      borderWidth: 3, borderColor: '#fff'
+    }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 10 } },
+      tooltip: { callbacks: {
+        label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10127*100).toFixed(1)}%)`
+      }}
+    }
+  }
+});
+
+// 4. Age bar
+new Chart(document.getElementById('chartAge'), {
+  type: 'bar',
+  data: {
+    labels: ['21–30', '31–40', '41–50', '51–60', '61–70', '71–80'],
+    datasets: [{
+      label: 'Nombre de clients',
+      data: [265, 2132, 4652, 2673, 404, 1],
+      backgroundColor: '#006633',
+      borderRadius: 6
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: '#e8f0eb' } }
+    }
+  }
+});
+
+// 5. Marital donut
+new Chart(document.getElementById('chartMarital'), {
+  type: 'pie',
+  data: {
+    labels: ['Marié(e)', 'Célibataire', 'Inconnu', 'Divorcé(e)'],
+    datasets: [{
+      data: [4687, 3943, 749, 748],
+      backgroundColor: ['#006633','#D4A017','#bdc3c7','#c0392b'],
+      borderWidth: 3, borderColor: '#fff'
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+      tooltip: { callbacks: {
+        label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10127*100).toFixed(1)}%)`
+      }}
+    }
+  }
+});
+
+// 6. Education horizontal bar
+new Chart(document.getElementById('chartEdu'), {
+  type: 'bar',
+  data: {
+    labels: ['Graduate','High School','Inconnu','Sans diplôme','College','Post-Graduate','Doctorat'],
+    datasets: [{
+      label: 'Clients',
+      data: [3128, 2013, 1519, 1487, 1013, 516, 451],
+      backgroundColor: ['#006633','#2980b9','#bdc3c7','#8e44ad','#D4A017','#27ae60','#e67e22'],
+      borderRadius: 5
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { beginAtZero: true, grid: { color: '#e8f0eb' } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+// 7. Income bar
+new Chart(document.getElementById('chartIncome'), {
+  type: 'bar',
+  data: {
+    labels: ['< $40K', '$40K-$60K', '$80K-$120K', '$60K-$80K', 'Inconnu', '$120K+'],
+    datasets: [{
+      label: 'Clients',
+      data: [3561, 1790, 1535, 1402, 1112, 727],
+      backgroundColor: '#D4A017',
+      borderRadius: 5
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { beginAtZero: true, grid: { color: '#e8f0eb' } }
+    }
+  }
+});
+
+// 8. Churn by education
+new Chart(document.getElementById('chartChurnEdu'), {
+  type: 'bar',
+  data: {
+    labels: ['Graduate','High School','Inconnu','Sans diplôme','College','Doctorat','Post-Grad.'],
+    datasets: [{
+      label: 'Churners',
+      data: [487, 306, 256, 237, 154, 95, 92],
+      backgroundColor: 'rgba(192,57,43,0.82)',
+      borderRadius: 5
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { beginAtZero: true, grid: { color: '#fde8e8' } }
+    }
+  }
+});
+
+// 9. Credit limit by card
+new Chart(document.getElementById('chartCreditCard'), {
+  type: 'bar',
+  data: {
+    labels: ['Blue', 'Silver', 'Gold', 'Platinum'],
+    datasets: [{
+      label: 'Limite Crédit Moy. ($)',
+      data: [7364, 25278, 28416, 30283],
+      backgroundColor: ['#2980b9','#95a5a6','#D4A017','#7f8c8d'],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: {
+        label: ctx => ` $${ctx.raw.toLocaleString()}`
+      }}
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: '#e8f0eb' },
+        ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'K' }
+      }
+    }
+  }
+});
+
+// ========================
+// DATA TABLE
+// ========================
+let currentPage = 1;
+const rowsPerPage = 10;
+let filteredData = [...tableData];
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const start = (currentPage - 1) * rowsPerPage;
+  const end   = start + rowsPerPage;
+  const page  = filteredData.slice(start, end);
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+
+  tbody.innerHTML = page.map((r, i) => {
+    const statusBadge = r[1] === 'Existing Customer'
+      ? `<span class="badge-status badge-existing">✅ Actif</span>`
+      : `<span class="badge-status badge-attrited">❌ Churner</span>`;
+    return `<tr>
+      <td>${start + i + 1}</td>
+      <td>${r[0]}</td>
+      <td>${statusBadge}</td>
+      <td>${r[2]} ans</td>
+      <td>${r[3] === 'M' ? '♂ Homme' : '♀ Femme'}</td>
+      <td>${r[4]}</td>
+      <td>${r[5]}</td>
+      <td>${r[6]}</td>
+      <td>$${r[7].toLocaleString()}</td>
+      <td>$${r[8].toLocaleString()}</td>
+      <td>${(r[9]*100).toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pageInfo').textContent =
+    `Page ${currentPage} / ${totalPages} (${filteredData.length} lignes)`;
+}
+
+function changePage(dir) {
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  currentPage = Math.min(Math.max(1, currentPage + dir), totalPages);
+  renderTable();
+}
+
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  filteredData = tableData.filter(r =>
+    r.some(v => String(v).toLowerCase().includes(q))
+  );
+  currentPage = 1;
+  renderTable();
+}
+
+renderTable();
+</script>
+</body>
+</html>
